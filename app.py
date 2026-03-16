@@ -4,22 +4,28 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = "super-secret-key" # Change this for production
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///repairs.db'
+app.secret_key = "super-secret-key"
+
+# FIX: Explicitly handle the database path for Docker
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_path = os.path.join(basedir, 'instance')
+
+if not os.path.exists(instance_path):
+    os.makedirs(instance_path)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(instance_path, 'repairs.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
-# Database Model
 class Repair(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(500), nullable=False)
-    status = db.Column(db.String(50), default='NEW') # NEW, PENDING, APPROVED, RETURNED
+    status = db.Column(db.String(50), default='NEW')
     quote_date = db.Column(db.DateTime, nullable=True)
     decision_date = db.Column(db.DateTime, nullable=True)
 
-with app.app_context():
-    db.create_all()
-
-# Helper for timestamps (Portuguese)
+# Helper for timestamps
 @app.template_filter('time_ago')
 def time_ago(dt):
     if not dt: return ""
@@ -27,13 +33,10 @@ def time_ago(dt):
     if diff.days > 0:
         return f"({diff.days} dias atrás)"
     minutes = diff.seconds // 60
+    if minutes < 1: return "(agora mesmo)"
     if minutes < 60:
         return f"({minutes} min atrás)"
     return f"({diff.seconds // 3600} horas atrás)"
-
-# Auth Middleware
-def is_logged_in():
-    return session.get('logged_in')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -53,7 +56,7 @@ def login():
 
 @app.route('/')
 def index():
-    if not is_logged_in(): return redirect(url_for('login'))
+    if not session.get('logged_in'): return redirect(url_for('login'))
     repairs = Repair.query.all()
     return render_template('index.html', repairs=repairs)
 
@@ -89,4 +92,6 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(host='0.0.0.0', port=5000)
