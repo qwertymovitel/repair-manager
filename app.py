@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 
@@ -53,6 +53,15 @@ def utility_processor():
         return over_90 and not_delayed
     return dict(needs_cleanup=needs_cleanup)
 
+# --- NEW API ROUTE FOR AUTO-REFRESH ---
+@app.route('/api/last_update')
+def last_update():
+    # Returns the timestamp of the most recent change in the database
+    latest = Repair.query.order_by(Repair.last_updated.desc()).first()
+    if latest:
+        return jsonify({"timestamp": latest.last_updated.timestamp()})
+    return jsonify({"timestamp": 0})
+
 # --- ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -98,7 +107,7 @@ def reassign(id):
     repair = Repair.query.get(id)
     tech_id = request.form.get('tech_id')
     repair.technician_id = tech_id if tech_id != "" else None
-    repair.last_updated = datetime.now() # Item moves to top
+    repair.last_updated = datetime.now()
     db.session.commit()
     return redirect(url_for('index'))
 
@@ -146,7 +155,6 @@ def logout():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        # Seed initial techs if empty
         if Technician.query.count() == 0:
             for n in ["Homo", "Willard", "Madeline", "Reginaldo", "Dinis"]:
                 db.session.add(Technician(name=n))
