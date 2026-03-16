@@ -21,6 +21,7 @@
                     <span class="text-emerald-400 text-[10px] font-black border border-emerald-400 px-2 rounded">ADMIN</span>
                     <a href="/logout" class="bg-rose-600 px-3 py-1 rounded text-[10px] font-bold">SAIR</a>
                 {% else %}
+                    <div class="text-[9px] text-slate-400 italic mr-2">Atualização Automática Ativa</div>
                     <a href="/login" class="bg-blue-600 px-4 py-1 rounded text-xs font-bold uppercase">Login</a>
                 {% endif %}
             </div>
@@ -40,7 +41,6 @@
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-black hover:bg-blue-700 uppercase text-xs">Adicionar Reparo</button>
             </form>
         </div>
-
         <div id="tech-modal" class="hidden p-4 bg-slate-100 border-b">
             <h3 class="font-black text-[10px] mb-2 uppercase text-slate-500">Configuração de Técnicos:</h3>
             <div class="flex flex-wrap gap-2 mb-3">
@@ -68,12 +68,10 @@
             <tbody>
                 {% for r in repairs %}
                 <tr class="{{ 'bg-gray-custom' if loop.index is even }}">
-                    <!-- COLUMN 1: NEW & TECH REASSIGN -->
-                    <td class="relative">
+                    <td>
                         <div class="font-black text-slate-800 text-lg tracking-tight">{{ r.description }}</div>
                         <div class="text-[9px] text-slate-400 mt-1 mb-3 uppercase">Registado: {{ r.last_updated.strftime('%d/%m/%Y %H:%M') }}</div>
                         
-                        <!-- INLINE TECHNICIAN BOX -->
                         <div class="mt-2">
                             {% if session.get('logged_in') %}
                                 <form action="/reassign/{{r.id}}" method="POST" class="flex items-center gap-1">
@@ -84,12 +82,8 @@
                                             <option value="{{t.id}}" {{ 'selected' if r.technician_id == t.id }}>{{t.name}}</option>
                                             {% endfor %}
                                         </select>
-                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-slate-400">
-                                            <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                                        </div>
                                     </div>
-                                    <button type="submit" class="text-emerald-600 hover:text-emerald-800 font-bold text-xl leading-none" title="Confirmar">✓</button>
-                                    <button type="reset" class="text-slate-300 hover:text-rose-500 font-bold text-lg leading-none" title="Limpar" onclick="this.form.querySelector('select').value=''">✕</button>
+                                    <button type="submit" class="text-emerald-600 hover:text-emerald-800 font-bold text-xl leading-none">✓</button>
                                 </form>
                             {% else %}
                                 {% if r.technician %}
@@ -110,24 +104,21 @@
                         {% endif %}
                     </td>
 
-                    <!-- COLUMN 2: PENDING -->
                     <td>
                         {% if r.status != 'NEW' %}
                             <div class="text-[10px] font-black text-amber-600 flex items-center gap-1 uppercase tracking-tighter italic">
                                 <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span> Aguardando Cliente
                             </div>
                             <div class="text-[9px] text-slate-400 mb-2 italic">Cotado {{ r.quote_date | time_ago }}</div>
-                            
                             {% if session.get('logged_in') and r.status == 'PENDING' %}
                                 <div class="flex flex-col gap-1.5 mt-2">
-                                    <a href="/update/{{r.id}}/approve" class="bg-emerald-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-emerald-700 uppercase shadow-sm">Aprovar Reparo</a>
-                                    <a href="/update/{{r.id}}/return" class="bg-rose-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-rose-700 uppercase shadow-sm">Devolução</a>
+                                    <a href="/update/{{r.id}}/approve" class="bg-emerald-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-emerald-700 uppercase">Aprovar Reparo</a>
+                                    <a href="/update/{{r.id}}/return" class="bg-rose-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-rose-700 uppercase">Devolução</a>
                                 </div>
                             {% endif %}
                         {% endif %}
                     </td>
 
-                    <!-- COLUMN 3: FINAL -->
                     <td>
                         {% if r.status == 'APPROVED' %}
                             <div class="text-emerald-700 font-black text-xl italic uppercase tracking-tighter">✓ Aprovado</div>
@@ -136,21 +127,40 @@
                             <div class="text-rose-700 font-black text-xl italic uppercase tracking-tighter">✕ Devolução</div>
                             <div class="text-[10px] text-slate-400 font-bold">{{ r.decision_date | time_ago }}</div>
                         {% endif %}
-
-                        {% if needs_cleanup(r) and session.get('logged_in') %}
-                        <div class="mt-4 p-2 bg-amber-50 border-2 border-amber-200 rounded text-[10px]">
-                            <p class="font-black text-amber-900 mb-1">⚠️ ITEM +90 DIAS</p>
-                            <div class="flex gap-3">
-                                <a href="/update/{{r.id}}/delete" class="text-emerald-700 font-bold underline">Eliminar</a>
-                                <a href="/update/{{r.id}}/deny_removal" class="text-slate-500 font-bold underline">Snooze (30d)</a>
-                            </div>
-                        </div>
-                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <!-- AUTO REFRESH SCRIPT -->
+    <script>
+        // Only run this if the user is NOT logged in (Guests)
+        const isAdmin = {{ 'true' if session.get('logged_in') else 'false' }};
+        
+        if (!isAdmin) {
+            let lastTimestamp = null;
+
+            async function checkUpdates() {
+                try {
+                    const response = await fetch('/api/last_update');
+                    const data = await response.json();
+                    
+                    if (lastTimestamp === null) {
+                        lastTimestamp = data.timestamp;
+                    } else if (data.timestamp > lastTimestamp) {
+                        console.log("Change detected! Refreshing...");
+                        window.location.reload();
+                    }
+                } catch (err) {
+                    console.log("Server unreachable, retrying...");
+                }
+            }
+
+            // Check every 5 seconds
+            setInterval(checkUpdates, 5000);
+        }
+    </script>
 </body>
 </html>
