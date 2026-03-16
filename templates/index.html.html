@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Reparos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 15px; vertical-align: top; width: 33.33%; }
+        .bg-gray-custom { background-color: #f4f4f4; }
+        .notification-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="p-4 bg-gray-800 text-white flex justify-between items-center">
+            <h1 class="text-xl font-bold uppercase tracking-widest">Gestão de Equipamentos</h1>
+            <div>
+                {% if session.get('logged_in') %}
+                    <span class="mr-4 text-green-400 text-sm font-bold">MODO ADMIN</span>
+                    <a href="/logout" class="bg-red-600 px-3 py-1 rounded text-sm">Sair</a>
+                {% else %}
+                    <a href="/login" class="bg-blue-600 px-3 py-1 rounded text-sm">Login Admin</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Only Admin sees the Add Form -->
+        {% if session.get('logged_in') %}
+        <div class="p-4 border-b bg-gray-50">
+            <form action="/add" method="POST" class="flex gap-2">
+                <input type="text" name="description" placeholder="DESCRIÇÃO DO EQUIPAMENTO E PROBLEMA..." class="flex-1 border p-2 rounded" required>
+                <button type="submit" class="bg-black text-white px-6 py-2 rounded font-bold hover:bg-gray-700">ADICIONAR</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <table>
+            <thead>
+                <tr class="text-left text-xl uppercase bg-gray-200">
+                    <th>Novo</th>
+                    <th>Pendente</th>
+                    <th>Aprovado / Devolução</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in repairs %}
+                <tr>
+                    <!-- COLUMN 1: NEW -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        <div class="font-bold text-lg">{{ r.description }}</div>
+                        <div class="text-[10px] text-gray-400 mt-1 uppercase">Atualizado: {{ r.last_updated.strftime('%d/%m/%Y %H:%M') }}</div>
+                        
+                        {% if session.get('logged_in') %}
+                            {% if r.status == 'NEW' %}
+                                <a href="/update/{{r.id}}/quote" class="inline-block mt-3 text-xs bg-yellow-500 text-white px-2 py-1 rounded font-bold">ENVIAR ORÇAMENTO</a>
+                            {% endif %}
+                            <a href="/update/{{r.id}}/delete" class="text-xs text-red-500 block mt-4 hover:underline" onclick="return confirm('Tem certeza que deseja excluir permanentemente?')">Excluir Registro</a>
+                        {% endif %}
+                    </td>
+
+                    <!-- COLUMN 2: PENDING -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        {% if r.status != 'NEW' %}
+                            <div class="font-bold text-orange-600 italic">ORÇAMENTO ENVIADO</div>
+                            <div class="text-sm text-gray-600">{{ r.quote_date | time_ago }}</div>
+                            
+                            {% if session.get('logged_in') and r.status == 'PENDING' %}
+                                <div class="mt-4 flex flex-col gap-2">
+                                    <a href="/update/{{r.id}}/approve" class="bg-green-600 text-white text-center text-xs p-2 rounded font-bold">APROVAR (Aprovado)</a>
+                                    <a href="/update/{{r.id}}/return" class="bg-red-600 text-white text-center text-xs p-2 rounded font-bold">DEVOLUÇÃO (Não Aprovado)</a>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <!-- COLUMN 3: FINAL STATUS & CLEANUP -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        {% if r.status == 'APPROVED' %}
+                            <div class="font-bold text-green-700 text-xl border-b-2 border-green-700 inline-block mb-1">APROVADO</div>
+                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                        {% elif r.status == 'RETURNED' %}
+                            <div class="font-bold text-red-700 text-xl border-b-2 border-red-700 inline-block mb-1">DEVOLUÇÃO</div>
+                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                        {% endif %}
+
+                        <!-- CLEANUP LOGIC NOTIFICATION (90 DAYS) -->
+                        {% if needs_cleanup(r) and session.get('logged_in') %}
+                        <div class="mt-4 p-2 bg-yellow-100 border-2 border-yellow-500 rounded text-xs">
+                            <p class="font-bold text-yellow-800 notification-pulse">⚠️ ALERTA: ITEM COM +90 DIAS</p>
+                            <p class="mb-2">Deseja remover da lista?</p>
+                            <div class="flex gap-2">
+                                <a href="/update/{{r.id}}/delete" class="bg-green-700 text-white p-1 rounded px-2">Sim (Remover)</a>
+                                <a href="/update/{{r.id}}/deny_removal" class="bg-gray-500 text-white p-1 rounded px-2">Não (+30 dias)</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
