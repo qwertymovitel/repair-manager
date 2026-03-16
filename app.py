@@ -34,15 +34,21 @@ class Repair(db.Model):
     delay_until = db.Column(db.DateTime, nullable=True)
 
 # --- FILTERS ---
+
+@app.template_filter('format_dt')
+def format_dt(value):
+    if not value: return ""
+    return value.strftime('%d/%m/%Y %H:%M')
+
 @app.template_filter('time_ago')
 def time_ago(dt):
     if not dt: return ""
     diff = datetime.now() - dt
-    if diff.days > 0: return f"({diff.days} dias atrás)"
+    if diff.days > 0: return f"(Há {diff.days} dias)"
     minutes = diff.seconds // 60
     if minutes < 1: return "(agora mesmo)"
-    if minutes < 60: return f"({minutes} min atrás)"
-    return f"({diff.seconds // 3600} horas atrás)"
+    if minutes < 60: return f"(Há {minutes} min)"
+    return f"(Há {diff.seconds // 3600} horas)"
 
 @app.context_processor
 def utility_processor():
@@ -53,16 +59,13 @@ def utility_processor():
         return over_90 and not_delayed
     return dict(needs_cleanup=needs_cleanup)
 
-# --- NEW API ROUTE FOR AUTO-REFRESH ---
+# --- API & ROUTES ---
+
 @app.route('/api/last_update')
 def last_update():
-    # Returns the timestamp of the most recent change in the database
     latest = Repair.query.order_by(Repair.last_updated.desc()).first()
-    if latest:
-        return jsonify({"timestamp": latest.last_updated.timestamp()})
-    return jsonify({"timestamp": 0})
+    return jsonify({"timestamp": latest.last_updated.timestamp() if latest else 0})
 
-# --- ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -92,11 +95,7 @@ def add():
     desc = request.form.get('description')
     tech_id = request.form.get('tech_id')
     if desc:
-        new_repair = Repair(
-            description=desc.upper(), 
-            technician_id=tech_id if tech_id != "" else None,
-            last_updated=datetime.now()
-        )
+        new_repair = Repair(description=desc.upper(), technician_id=tech_id if tech_id != "" else None, last_updated=datetime.now())
         db.session.add(new_repair)
         db.session.commit()
     return redirect(url_for('index'))
