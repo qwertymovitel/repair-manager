@@ -8,91 +8,120 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ccc; padding: 15px; vertical-align: top; width: 33.33%; }
         .bg-gray-custom { background-color: #f4f4f4; }
-        .notification-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-6xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <div class="p-4 bg-gray-800 text-white flex justify-between items-center">
-            <h1 class="text-xl font-bold uppercase tracking-widest">Gestão de Equipamentos</h1>
-            <div>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-7xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden">
+        <!-- HEADER -->
+        <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+            <h1 class="text-2xl font-black uppercase tracking-tighter italic">REPAIR MANAGER</h1>
+            <div class="flex items-center gap-4">
                 {% if session.get('logged_in') %}
-                    <span class="mr-4 text-green-400 text-sm font-bold">MODO ADMIN</span>
-                    <a href="/logout" class="bg-red-600 px-3 py-1 rounded text-sm">Sair</a>
+                    <button onclick="document.getElementById('tech-modal').classList.toggle('hidden')" class="text-xs bg-slate-600 px-3 py-1 rounded hover:bg-slate-500">Gerenciar Técnicos</button>
+                    <span class="text-green-400 text-xs font-bold">ADMIN</span>
+                    <a href="/logout" class="bg-red-600 px-3 py-1 rounded text-xs">Sair</a>
                 {% else %}
-                    <a href="/login" class="bg-blue-600 px-3 py-1 rounded text-sm">Login Admin</a>
+                    <a href="/login" class="bg-blue-600 px-4 py-1 rounded text-sm font-bold">Acesso Restrito</a>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Only Admin sees the Add Form -->
+        <!-- ADMIN ADD FORM -->
         {% if session.get('logged_in') %}
-        <div class="p-4 border-b bg-gray-50">
-            <form action="/add" method="POST" class="flex gap-2">
-                <input type="text" name="description" placeholder="DESCRIÇÃO DO EQUIPAMENTO E PROBLEMA..." class="flex-1 border p-2 rounded" required>
-                <button type="submit" class="bg-black text-white px-6 py-2 rounded font-bold hover:bg-gray-700">ADICIONAR</button>
+        <div class="p-4 border-b bg-slate-50">
+            <form action="/add" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input type="text" name="description" placeholder="EQUIPAMENTO E AVARIA..." class="md:col-span-2 border p-2 rounded text-sm" required>
+                <select name="tech_id" class="border p-2 rounded text-sm bg-white">
+                    <option value="">Atribuir Técnico (Opcional)</option>
+                    {% for t in techs %}
+                    <option value="{{t.id}}">{{t.name}}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="bg-blue-700 text-white p-2 rounded font-bold hover:bg-blue-800 uppercase text-sm">Adicionar Reparo</button>
+            </form>
+        </div>
+
+        <!-- TECHNICIAN MANAGEMENT MODAL (HIDDEN BY DEFAULT) -->
+        <div id="tech-modal" class="hidden p-4 bg-yellow-50 border-b border-yellow-200">
+            <h3 class="font-bold text-sm mb-2 uppercase">Configurar Técnicos:</h3>
+            <div class="flex flex-wrap gap-2 mb-3">
+                {% for t in techs %}
+                <span class="bg-white border px-2 py-1 rounded text-xs flex items-center gap-2">
+                    {{t.name}} <a href="/tech/delete/{{t.id}}" class="text-red-500 font-bold hover:text-red-700">×</a>
+                </span>
+                {% endfor %}
+            </div>
+            <form action="/tech/manage" method="POST" class="flex gap-2">
+                <input type="text" name="tech_name" placeholder="Nome do novo técnico..." class="border p-1 text-xs rounded w-48">
+                <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold">+ Adicionar</button>
             </form>
         </div>
         {% endif %}
 
-        <table>
+        <!-- MAIN KANBAN TABLE -->
+        <table class="w-full">
             <thead>
-                <tr class="text-left text-xl uppercase bg-gray-200">
-                    <th>Novo</th>
-                    <th>Pendente</th>
-                    <th>Aprovado / Devolução</th>
+                <tr class="bg-slate-100 text-left uppercase text-sm font-black text-slate-600">
+                    <th class="p-4">1. Entrada (Novo)</th>
+                    <th class="p-4">2. Pendente (Cotação)</th>
+                    <th class="p-4">3. Finalizado (Aprovado/Dev)</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in repairs %}
-                <tr>
-                    <!-- COLUMN 1: NEW -->
-                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
-                        <div class="font-bold text-lg">{{ r.description }}</div>
-                        <div class="text-[10px] text-gray-400 mt-1 uppercase">Atualizado: {{ r.last_updated.strftime('%d/%m/%Y %H:%M') }}</div>
+                <tr class="{{ 'bg-slate-50' if loop.index is even }}">
+                    <!-- COL 1 -->
+                    <td>
+                        <div class="font-bold text-slate-800">{{ r.description }}</div>
+                        {% if r.technician %}
+                            <div class="mt-1 inline-block bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
+                                🔧 Técnico: {{ r.technician.name }}
+                            </div>
+                        {% endif %}
+                        <div class="text-[9px] text-slate-400 mt-2">REGISTADO: {{ r.last_updated.strftime('%d/%m/%Y %H:%M') }}</div>
                         
                         {% if session.get('logged_in') %}
                             {% if r.status == 'NEW' %}
-                                <a href="/update/{{r.id}}/quote" class="inline-block mt-3 text-xs bg-yellow-500 text-white px-2 py-1 rounded font-bold">ENVIAR ORÇAMENTO</a>
+                                <a href="/update/{{r.id}}/quote" class="inline-block mt-3 text-[10px] bg-amber-500 text-white px-3 py-1 rounded font-black hover:bg-amber-600">ENVIAR P/ COTAÇÃO</a>
                             {% endif %}
-                            <a href="/update/{{r.id}}/delete" class="text-xs text-red-500 block mt-4 hover:underline" onclick="return confirm('Tem certeza que deseja excluir permanentemente?')">Excluir Registro</a>
+                            <a href="/update/{{r.id}}/delete" class="text-[10px] text-red-400 block mt-4 hover:text-red-600" onclick="return confirm('Excluir permanentemente?')">Eliminar registro</a>
                         {% endif %}
                     </td>
 
-                    <!-- COLUMN 2: PENDING -->
-                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                    <!-- COL 2 -->
+                    <td>
                         {% if r.status != 'NEW' %}
-                            <div class="font-bold text-orange-600 italic">ORÇAMENTO ENVIADO</div>
-                            <div class="text-sm text-gray-600">{{ r.quote_date | time_ago }}</div>
+                            <div class="text-xs font-black text-amber-600 flex items-center gap-1 uppercase">
+                                <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span> Aguardando Resposta
+                            </div>
+                            <div class="text-[10px] text-slate-500 mb-2 italic">Cotado {{ r.quote_date | time_ago }}</div>
                             
                             {% if session.get('logged_in') and r.status == 'PENDING' %}
-                                <div class="mt-4 flex flex-col gap-2">
-                                    <a href="/update/{{r.id}}/approve" class="bg-green-600 text-white text-center text-xs p-2 rounded font-bold">APROVAR (Aprovado)</a>
-                                    <a href="/update/{{r.id}}/return" class="bg-red-600 text-white text-center text-xs p-2 rounded font-bold">DEVOLUÇÃO (Não Aprovado)</a>
+                                <div class="flex flex-col gap-1 mt-2">
+                                    <a href="/update/{{r.id}}/approve" class="bg-emerald-600 text-white text-center text-[10px] p-2 rounded font-bold hover:bg-emerald-700 uppercase">Aprovado</a>
+                                    <a href="/update/{{r.id}}/return" class="bg-rose-600 text-white text-center text-[10px] p-2 rounded font-bold hover:bg-rose-700 uppercase">Devolução</a>
                                 </div>
                             {% endif %}
                         {% endif %}
                     </td>
 
-                    <!-- COLUMN 3: FINAL STATUS & CLEANUP -->
-                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                    <!-- COL 3 -->
+                    <td>
                         {% if r.status == 'APPROVED' %}
-                            <div class="font-bold text-green-700 text-xl border-b-2 border-green-700 inline-block mb-1">APROVADO</div>
-                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                            <div class="text-emerald-700 font-black text-lg italic uppercase">✓ Aprovado</div>
+                            <div class="text-[10px] text-slate-500">{{ r.decision_date | time_ago }}</div>
                         {% elif r.status == 'RETURNED' %}
-                            <div class="font-bold text-red-700 text-xl border-b-2 border-red-700 inline-block mb-1">DEVOLUÇÃO</div>
-                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                            <div class="text-rose-700 font-black text-lg italic uppercase">✕ Devolução</div>
+                            <div class="text-[10px] text-slate-500">{{ r.decision_date | time_ago }}</div>
                         {% endif %}
 
-                        <!-- CLEANUP LOGIC NOTIFICATION (90 DAYS) -->
+                        <!-- CLEANUP ALERT -->
                         {% if needs_cleanup(r) and session.get('logged_in') %}
-                        <div class="mt-4 p-2 bg-yellow-100 border-2 border-yellow-500 rounded text-xs">
-                            <p class="font-bold text-yellow-800 notification-pulse">⚠️ ALERTA: ITEM COM +90 DIAS</p>
-                            <p class="mb-2">Deseja remover da lista?</p>
-                            <div class="flex gap-2">
-                                <a href="/update/{{r.id}}/delete" class="bg-green-700 text-white p-1 rounded px-2">Sim (Remover)</a>
-                                <a href="/update/{{r.id}}/deny_removal" class="bg-gray-500 text-white p-1 rounded px-2">Não (+30 dias)</a>
+                        <div class="mt-4 p-2 bg-amber-50 border border-amber-300 rounded text-[10px]">
+                            <p class="font-bold text-amber-800">⚠️ ITEM ANTIGO (+90 DIAS)</p>
+                            <div class="flex gap-2 mt-1">
+                                <a href="/update/{{r.id}}/delete" class="text-emerald-700 font-bold underline">Remover</a>
+                                <a href="/update/{{r.id}}/deny_removal" class="text-slate-500 font-bold underline">Manter (+30d)</a>
                             </div>
                         </div>
                         {% endif %}
