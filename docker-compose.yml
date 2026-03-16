@@ -7,3 +7,5 @@ services:
     volumes:
       - ./instance:/app/instance
     restart: always
+   environment:
+      - TZ=Africa/Harare  
