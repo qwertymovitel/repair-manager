@@ -10,19 +10,26 @@
         .bg-gray-custom { background-color: #f8fafc; }
     </style>
 </head>
-<body class="bg-slate-200 p-4">
-    <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded-lg overflow-hidden border border-slate-300">
+<body class="bg-slate-200 p-4 font-sans">
+    <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-300">
+        
         <!-- HEADER -->
-        <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
-            <h1 class="text-2xl font-black italic tracking-tighter">REPAIR MANAGER</h1>
+        <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-black italic tracking-tighter leading-none">REPAIR MANAGER</h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mt-1">Sistema Interno de Acompanhamento</p>
+            </div>
             <div class="flex items-center gap-3">
                 {% if session.get('logged_in') %}
-                    <button onclick="document.getElementById('tech-modal').classList.toggle('hidden')" class="text-[10px] bg-slate-700 px-3 py-1 rounded hover:bg-slate-600 uppercase font-bold">Técnicos</button>
-                    <span class="text-emerald-400 text-[10px] font-black border border-emerald-400 px-2 rounded">ADMIN</span>
-                    <a href="/logout" class="bg-rose-600 px-3 py-1 rounded text-[10px] font-bold">SAIR</a>
+                    <button onclick="document.getElementById('tech-modal').classList.toggle('hidden')" class="text-[10px] bg-slate-700 px-3 py-1.5 rounded hover:bg-slate-600 uppercase font-bold transition">Técnicos</button>
+                    <span class="text-emerald-400 text-[10px] font-black border-2 border-emerald-400 px-2 py-0.5 rounded">ADMIN MODO</span>
+                    <a href="/logout" class="bg-rose-600 px-4 py-1.5 rounded text-[10px] font-black hover:bg-rose-700 transition">SAIR</a>
                 {% else %}
-                    <div class="text-[9px] text-slate-400 italic mr-2">Atualização Automática Ativa</div>
-                    <a href="/login" class="bg-blue-600 px-4 py-1 rounded text-xs font-bold uppercase">Login</a>
+                    <div class="flex items-center gap-2 mr-4">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase">Auto-Refresh On</span>
+                    </div>
+                    <a href="/login" class="bg-blue-600 px-6 py-2 rounded text-xs font-black uppercase hover:bg-blue-700 transition">Login</a>
                 {% endif %}
             </div>
         </div>
@@ -31,63 +38,69 @@
         {% if session.get('logged_in') %}
         <div class="p-4 border-b bg-slate-50">
             <form action="/add" method="POST" class="flex gap-2">
-                <input type="text" name="description" placeholder="NOME DO EQUIPAMENTO E MODELO..." class="flex-1 border-2 border-slate-200 p-2 rounded text-sm font-bold focus:border-blue-500 outline-none" required>
-                <select name="tech_id" class="border-2 border-slate-200 p-2 rounded text-xs bg-white font-bold">
+                <input type="text" name="description" placeholder="NOME DO EQUIPAMENTO E MODELO..." class="flex-1 border-2 border-slate-200 p-3 rounded-lg text-sm font-bold focus:border-blue-500 outline-none transition" required>
+                <select name="tech_id" class="border-2 border-slate-200 p-3 rounded-lg text-xs bg-white font-bold outline-none">
                     <option value="">Atribuir Técnico (Opcional)</option>
                     {% for t in techs %}
                     <option value="{{t.id}}">{{t.name}}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-black hover:bg-blue-700 uppercase text-xs">Adicionar Reparo</button>
+                <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-black hover:bg-blue-700 uppercase text-xs transition">Registar</button>
             </form>
         </div>
+
         <div id="tech-modal" class="hidden p-4 bg-slate-100 border-b">
-            <h3 class="font-black text-[10px] mb-2 uppercase text-slate-500">Configuração de Técnicos:</h3>
-            <div class="flex flex-wrap gap-2 mb-3">
+            <h3 class="font-black text-[10px] mb-2 uppercase text-slate-500">Gestão da Equipa:</h3>
+            <div class="flex flex-wrap gap-2 mb-4">
                 {% for t in techs %}
-                <span class="bg-white border-2 border-slate-200 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-2">
-                    {{t.name}} <a href="/tech/delete/{{t.id}}" class="text-rose-500 hover:text-rose-700 text-xs">×</a>
+                <span class="bg-white border-2 border-slate-200 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-2">
+                    {{t.name}} <a href="/tech/delete/{{t.id}}" class="text-rose-500 hover:text-rose-700 font-black">×</a>
                 </span>
                 {% endfor %}
             </div>
             <form action="/tech/manage" method="POST" class="flex gap-2">
-                <input type="text" name="tech_name" placeholder="Novo técnico..." class="border p-1 text-xs rounded w-40">
-                <button type="submit" class="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ NOVO</button>
+                <input type="text" name="tech_name" placeholder="Nome do novo técnico..." class="border p-2 text-xs rounded-lg w-48 outline-none focus:border-blue-400">
+                <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-[10px] font-black hover:bg-emerald-700 transition">+ ADICIONAR TÉCNICO</button>
             </form>
         </div>
         {% endif %}
 
+        <!-- MAIN TABLE -->
         <table class="w-full">
             <thead>
-                <tr class="bg-slate-50 text-left uppercase text-xs font-black text-slate-500">
-                    <th>1. ENTRADA (NOVO)</th>
-                    <th>2. PENDENTE (COTAÇÃO)</th>
-                    <th>3. FINALIZADO (APROVADO/DEV)</th>
+                <tr class="bg-slate-100 text-left uppercase text-[11px] font-black text-slate-500 tracking-widest">
+                    <th class="p-5">1. ENTRADA (NOVO)</th>
+                    <th class="p-5">2. PENDENTE (COTAÇÃO)</th>
+                    <th class="p-5">3. FINALIZADO (APROVADO/DEV)</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in repairs %}
-                <tr class="{{ 'bg-gray-custom' if loop.index is even }}">
+                <tr class="{{ 'bg-gray-custom' if loop.index is even }} border-b border-slate-100">
+                    <!-- COLUMN 1: NEW -->
                     <td>
-                        <div class="font-black text-slate-800 text-lg tracking-tight">{{ r.description }}</div>
-                        <div class="text-[9px] text-slate-400 mt-1 mb-3 uppercase">Registado: {{ r.last_updated.strftime('%d/%m/%Y %H:%M') }}</div>
+                        <div class="font-black text-slate-800 text-lg leading-tight">{{ r.description }}</div>
+                        <div class="text-[9px] text-slate-400 mt-1 mb-4 font-bold uppercase">Entrada: {{ r.last_updated | format_dt }}</div>
                         
                         <div class="mt-2">
                             {% if session.get('logged_in') %}
-                                <form action="/reassign/{{r.id}}" method="POST" class="flex items-center gap-1">
+                                <form action="/reassign/{{r.id}}" method="POST" class="flex items-center gap-1 group">
                                     <div class="relative">
-                                        <select name="tech_id" class="appearance-none border-2 border-slate-300 rounded px-2 py-1 text-[11px] font-bold text-slate-700 pr-6 bg-white hover:border-blue-400 outline-none cursor-pointer">
+                                        <select name="tech_id" class="appearance-none border-2 border-slate-300 rounded-md px-3 py-1.5 text-[11px] font-black text-slate-700 pr-8 bg-white group-hover:border-blue-400 outline-none cursor-pointer transition">
                                             <option value="">(Sem Técnico)</option>
                                             {% for t in techs %}
                                             <option value="{{t.id}}" {{ 'selected' if r.technician_id == t.id }}>{{t.name}}</option>
                                             {% endfor %}
                                         </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                                            <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="text-emerald-600 hover:text-emerald-800 font-bold text-xl leading-none">✓</button>
+                                    <button type="submit" class="text-emerald-600 hover:text-emerald-800 font-black text-xl leading-none px-1">✓</button>
                                 </form>
                             {% else %}
                                 {% if r.technician %}
-                                    <div class="inline-block bg-slate-800 text-white text-[10px] px-3 py-1 rounded font-black uppercase tracking-widest">
+                                    <div class="inline-block bg-slate-800 text-white text-[10px] px-3 py-1 rounded font-black uppercase tracking-widest shadow-sm">
                                         🔧 {{ r.technician.name }}
                                     </div>
                                 {% endif %}
@@ -95,37 +108,61 @@
                         </div>
 
                         {% if session.get('logged_in') %}
-                            <div class="mt-4 pt-4 border-t border-slate-100 flex gap-4 items-center">
+                            <div class="mt-5 pt-4 border-t border-slate-200 flex gap-4 items-center">
                                 {% if r.status == 'NEW' %}
-                                    <a href="/update/{{r.id}}/quote" class="bg-amber-500 text-white text-[10px] px-3 py-1.5 rounded font-black hover:bg-amber-600 uppercase">Enviar p/ Cotação</a>
+                                    <a href="/update/{{r.id}}/quote" class="bg-amber-500 text-white text-[10px] px-4 py-2 rounded-md font-black hover:bg-amber-600 uppercase shadow-sm transition">Iniciar Cotação</a>
                                 {% endif %}
-                                <a href="/update/{{r.id}}/delete" class="text-[9px] text-slate-300 hover:text-rose-500 uppercase font-bold" onclick="return confirm('Eliminar permanentemente?')">Eliminar</a>
+                                <a href="/update/{{r.id}}/delete" class="text-[9px] text-slate-300 hover:text-rose-600 uppercase font-black transition" onclick="return confirm('Eliminar permanentemente?')">Eliminar</a>
                             </div>
                         {% endif %}
                     </td>
 
+                    <!-- COLUMN 2: PENDING -->
                     <td>
                         {% if r.status != 'NEW' %}
-                            <div class="text-[10px] font-black text-amber-600 flex items-center gap-1 uppercase tracking-tighter italic">
-                                <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span> Aguardando Cliente
+                            <div class="text-[10px] font-black text-amber-600 flex items-center gap-2 uppercase italic">
+                                {% if r.status == 'PENDING' %}
+                                    <span class="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span> Aguardando Decisão
+                                {% else %}
+                                    <span class="text-slate-400">Resposta Recebida</span>
+                                {% endif %}
                             </div>
-                            <div class="text-[9px] text-slate-400 mb-2 italic">Cotado {{ r.quote_date | time_ago }}</div>
+                            
+                            <div class="text-[10px] text-slate-400 mt-1 mb-3 font-bold">
+                                {% if r.status == 'PENDING' %}
+                                    Cotado {{ r.quote_date | time_ago }}
+                                {% else %}
+                                    Decidido em: {{ r.decision_date | format_dt }}
+                                {% endif %}
+                            </div>
+                            
                             {% if session.get('logged_in') and r.status == 'PENDING' %}
-                                <div class="flex flex-col gap-1.5 mt-2">
-                                    <a href="/update/{{r.id}}/approve" class="bg-emerald-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-emerald-700 uppercase">Aprovar Reparo</a>
-                                    <a href="/update/{{r.id}}/return" class="bg-rose-600 text-white text-center text-[10px] p-2 rounded font-black hover:bg-rose-700 uppercase">Devolução</a>
+                                <div class="flex flex-col gap-2 mt-4">
+                                    <a href="/update/{{r.id}}/approve" class="bg-emerald-600 text-white text-center text-[11px] p-2.5 rounded-lg font-black hover:bg-emerald-700 uppercase shadow-md transition">Aprovar Reparo</a>
+                                    <a href="/update/{{r.id}}/return" class="bg-rose-600 text-white text-center text-[11px] p-2.5 rounded-lg font-black hover:bg-rose-700 uppercase shadow-md transition">Devolver s/ Reparo</a>
                                 </div>
                             {% endif %}
                         {% endif %}
                     </td>
 
+                    <!-- COLUMN 3: FINAL -->
                     <td>
                         {% if r.status == 'APPROVED' %}
-                            <div class="text-emerald-700 font-black text-xl italic uppercase tracking-tighter">✓ Aprovado</div>
-                            <div class="text-[10px] text-slate-400 font-bold">{{ r.decision_date | time_ago }}</div>
+                            <div class="text-emerald-700 font-black text-2xl italic uppercase tracking-tighter leading-none">✓ APROVADO</div>
+                            <div class="text-[10px] text-slate-400 font-bold mt-1 uppercase">{{ r.decision_date | time_ago }}</div>
                         {% elif r.status == 'RETURNED' %}
-                            <div class="text-rose-700 font-black text-xl italic uppercase tracking-tighter">✕ Devolução</div>
-                            <div class="text-[10px] text-slate-400 font-bold">{{ r.decision_date | time_ago }}</div>
+                            <div class="text-rose-700 font-black text-2xl italic uppercase tracking-tighter leading-none">✕ DEVOLUÇÃO</div>
+                            <div class="text-[10px] text-slate-400 font-bold mt-1 uppercase">{{ r.decision_date | time_ago }}</div>
+                        {% endif %}
+
+                        {% if needs_cleanup(r) and session.get('logged_in') %}
+                        <div class="mt-6 p-3 bg-amber-50 border-2 border-amber-200 rounded-lg text-[10px]">
+                            <p class="font-black text-amber-900 mb-2 uppercase">⚠️ ALERTA DE ARQUIVO (+90 DIAS)</p>
+                            <div class="flex gap-4">
+                                <a href="/update/{{r.id}}/delete" class="text-emerald-700 font-black underline hover:text-emerald-900">Eliminar Agora</a>
+                                <a href="/update/{{r.id}}/deny_removal" class="text-slate-500 font-black underline hover:text-slate-700">Manter +30 Dias</a>
+                            </div>
+                        </div>
                         {% endif %}
                     </td>
                 </tr>
@@ -136,7 +173,6 @@
 
     <!-- AUTO REFRESH SCRIPT -->
     <script>
-        // Only run this if the user is NOT logged in (Guests)
         const isAdmin = {{ 'true' if session.get('logged_in') else 'false' }};
         
         if (!isAdmin) {
@@ -150,16 +186,14 @@
                     if (lastTimestamp === null) {
                         lastTimestamp = data.timestamp;
                     } else if (data.timestamp > lastTimestamp) {
-                        console.log("Change detected! Refreshing...");
+                        console.log("Alteração detetada! Atualizando...");
                         window.location.reload();
                     }
                 } catch (err) {
-                    console.log("Server unreachable, retrying...");
+                    // Silently fail if server is momentarily down
                 }
             }
-
-            // Check every 5 seconds
-            setInterval(checkUpdates, 5000);
+            setInterval(checkUpdates, 5000); // Check every 5 seconds
         }
     </script>
 </body>
