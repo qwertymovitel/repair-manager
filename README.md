@@ -4,6 +4,6 @@ Simple web-based tool to manage equipment repairs.
 ## How to run
 git clone https://github.com/qwertymovitel/repair-manager.git
 1. Install Docker and Docker Compose.
-2. Run `docker-compose up -d`.
+2. Run `docker compose up -d`.
 3. Access at `http://localhost:5000`.
 4. Login: admin / admin
