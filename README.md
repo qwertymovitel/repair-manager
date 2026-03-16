@@ -7,3 +7,6 @@ git clone https://github.com/qwertymovitel/repair-manager.git
 2. Run `docker compose up -d`.
 3. Access at `http://localhost:5000`.
 4. Login: admin / admin
+
+## Rebuild 
+docker compose up -d --build
