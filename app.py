@@ -3,6 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 
+# This part ensures Flask finds the folder regardless of how Docker is configured
+base_dir = os.path.abspath(os.path.dirname(__file__))
+template_dir = os.path.join(base_dir, 'templates')
+
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
 
