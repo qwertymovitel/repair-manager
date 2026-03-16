@@ -34,7 +34,6 @@ class Repair(db.Model):
     delay_until = db.Column(db.DateTime, nullable=True)
 
 # --- FILTERS ---
-
 @app.template_filter('format_dt')
 def format_dt(value):
     if not value: return ""
@@ -59,50 +58,51 @@ def utility_processor():
         return over_90 and not_delayed
     return dict(needs_cleanup=needs_cleanup)
 
-# --- API & ROUTES ---
+# --- ROUTES ---
+
+@app.route('/')
+def index():
+    search_query = request.args.get('s', '').strip()
+    
+    # Base query: Newest updates first
+    query = Repair.query
+    
+    if search_query:
+        # Search in description OR Technician name
+        query = query.join(Technician, isouter=True).filter(
+            db.or_(
+                Repair.description.contains(search_query.upper()),
+                Technician.name.contains(search_query)
+            )
+        )
+    
+    repairs = query.order_by(Repair.last_updated.desc()).all()
+    techs = Technician.query.order_by(Technician.name).all()
+    return render_template('index.html', repairs=repairs, techs=techs, search_query=search_query)
 
 @app.route('/api/last_update')
 def last_update():
     latest = Repair.query.order_by(Repair.last_updated.desc()).first()
     return jsonify({"timestamp": latest.last_updated.timestamp() if latest else 0})
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        if request.form['username'] == 'admin' and request.form['password'] == 'admin':
-            session['logged_in'] = True
-            return redirect(url_for('index'))
-        flash('Login Inválido')
-    return '''
-        <form method="post" style="text-align:center; margin-top:100px; font-family:sans-serif;">
-            <h2>Gestão de Reparos - Login Admin</h2>
-            <input type="text" name="username" placeholder="Usuário" required><br><br>
-            <input type="password" name="password" placeholder="Senha" required><br><br>
-            <button type="submit">Entrar</button><br><br>
-            <a href="/">Voltar para Visualização</a>
-        </form>
-    '''
-
-@app.route('/')
-def index():
-    repairs = Repair.query.order_by(Repair.last_updated.desc()).all()
-    techs = Technician.query.order_by(Technician.name).all()
-    return render_template('index.html', repairs=repairs, techs=techs)
-
 @app.route('/add', methods=['POST'])
 def add():
-    if not session.get('logged_in'): return redirect(url_for('login'))
+    if not session.get('logged_in'): return redirect(url_for('index'))
     desc = request.form.get('description')
     tech_id = request.form.get('tech_id')
     if desc:
-        new_repair = Repair(description=desc.upper(), technician_id=tech_id if tech_id != "" else None, last_updated=datetime.now())
+        new_repair = Repair(
+            description=desc.upper(), 
+            technician_id=tech_id if tech_id != "" else None,
+            last_updated=datetime.now()
+        )
         db.session.add(new_repair)
         db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/reassign/<int:id>', methods=['POST'])
 def reassign(id):
-    if not session.get('logged_in'): return redirect(url_for('login'))
+    if not session.get('logged_in'): return redirect(url_for('index'))
     repair = Repair.query.get(id)
     tech_id = request.form.get('tech_id')
     repair.technician_id = tech_id if tech_id != "" else None
@@ -110,27 +110,9 @@ def reassign(id):
     db.session.commit()
     return redirect(url_for('index'))
 
-@app.route('/tech/manage', methods=['POST'])
-def add_tech():
-    if not session.get('logged_in'): return redirect(url_for('login'))
-    name = request.form.get('tech_name')
-    if name and not Technician.query.filter_by(name=name).first():
-        db.session.add(Technician(name=name))
-        db.session.commit()
-    return redirect(url_for('index'))
-
-@app.route('/tech/delete/<int:id>')
-def delete_tech(id):
-    if not session.get('logged_in'): return redirect(url_for('login'))
-    tech = Technician.query.get(id)
-    if tech:
-        db.session.delete(tech)
-        db.session.commit()
-    return redirect(url_for('index'))
-
 @app.route('/update/<int:id>/<action>')
 def update(id, action):
-    if not session.get('logged_in'): return redirect(url_for('login'))
+    if not session.get('logged_in'): return redirect(url_for('index'))
     repair = Repair.query.get(id)
     repair.last_updated = datetime.now()
     if action == 'quote':
@@ -146,9 +128,34 @@ def update(id, action):
     db.session.commit()
     return redirect(url_for('index'))
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form['username'] == 'admin' and request.form['password'] == 'admin':
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+    return render_template('login_simple.html') # Login template
+
 @app.route('/logout')
 def logout():
     session.clear()
+    return redirect(url_for('index'))
+
+@app.route('/tech/manage', methods=['POST'])
+def add_tech():
+    if not session.get('logged_in'): return redirect(url_for('index'))
+    name = request.form.get('tech_name')
+    if name:
+        db.session.add(Technician(name=name))
+        db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/tech/delete/<int:id>')
+def delete_tech(id):
+    if not session.get('logged_in'): return redirect(url_for('index'))
+    tech = Technician.query.get(id)
+    db.session.delete(tech)
+    db.session.commit()
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
