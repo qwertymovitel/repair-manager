@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Reparos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 15px; vertical-align: top; width: 33.33%; }
+        .bg-gray-custom { background-color: #f4f4f4; }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="p-4 bg-gray-800 text-white flex justify-between">
+            <h1 class="text-xl font-bold uppercase">Gestão de Equipamentos</h1>
+            <a href="/logout" class="text-sm underline">Sair</a>
+        </div>
+
+        <div class="p-4 border-b">
+            <form action="/add" method="POST" class="flex gap-2">
+                <input type="text" name="description" placeholder="Ex: AAA - HP 250 G4 (NÃO LIGA)" class="flex-1 border p-2 rounded" required>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+ NOVO REPARO</button>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr class="text-left text-xl uppercase">
+                    <th>Novo (Equipamento)</th>
+                    <th>Pendente (Orçamento)</th>
+                    <th>Aprovado / Devolução</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in repairs %}
+                <tr>
+                    <!-- NEW COLUMN -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        <div class="font-bold mb-2">{{ r.description }}</div>
+                        {% if r.status == 'NEW' %}
+                            <a href="/update/{{r.id}}/quote" class="text-xs bg-yellow-500 text-white p-1 rounded">Enviar Orçamento</a>
+                        {% endif %}
+                        <a href="/update/{{r.id}}/delete" class="text-xs text-red-500 block mt-2" onclick="return confirm('Excluir?')">Remover</a>
+                    </td>
+
+                    <!-- PENDING COLUMN -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        {% if r.status != 'NEW' %}
+                            <div class="font-bold">ORÇAMENTO</div>
+                            <div class="text-sm text-gray-600">{{ r.quote_date | time_ago }}</div>
+                            {% if r.status == 'PENDING' %}
+                                <div class="mt-4 flex gap-2">
+                                    <a href="/update/{{r.id}}/approve" class="bg-green-600 text-white text-xs p-2 rounded">Aprovar</a>
+                                    <a href="/update/{{r.id}}/return" class="bg-red-600 text-white text-xs p-2 rounded">Devolução</a>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+
+                    <!-- APPROVED/RETURN COLUMN -->
+                    <td class="{{ 'bg-gray-custom' if loop.index is even }}">
+                        {% if r.status == 'APPROVED' %}
+                            <div class="font-bold text-green-700">APROVADO</div>
+                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                        {% elif r.status == 'RETURNED' %}
+                            <div class="font-bold text-red-700">DEVOLUÇÃO</div>
+                            <div class="text-sm text-gray-600">{{ r.decision_date | time_ago }}</div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
